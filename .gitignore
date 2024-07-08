@@ -1,0 +1,32 @@
+Copy# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Ansible
+*.retry
+ansible.cfg
+inventory.ini
+
+# Common
+.DS_Store
+*.log
+*.bak
+*.swp
+*~
+
+# IDEs and editors
+.vscode/
+.idea/
+*.iml
+
+admin.conf
+
+inventory.yaml

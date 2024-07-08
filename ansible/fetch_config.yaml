@@ -1,0 +1,27 @@
+- name: Fetch k8s config
+  hosts: master
+  become: true
+  tasks:
+    - name: Fetch k8s config
+      ansible.builtin.fetch:
+        src: /etc/kubernetes/admin.conf
+        dest: ./kube/
+        flat: true
+        fail_on_missing: true
+
+
+- name: Update kubeconfig
+  hosts: localhost
+  connection: local
+  vars:
+    master_public_ip: "{{ hostvars['master']['ansible_host'] }}"
+  tasks:
+    - name: Set correct permissions on kubeconfig
+      ansible.builtin.file:
+        path: ./kube/admin.conf
+        mode: '0600'
+    - name: Update server address in kubeconfig
+      ansible.builtin.replace:
+        path: ./kube/admin.conf
+        regexp: 'server: https://[^:]+(:\d+)?'
+        replace: 'server: https://{{ master_public_ip }}:6443'

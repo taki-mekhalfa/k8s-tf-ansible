@@ -1,0 +1,8 @@
+- name: Install k8s dependencies
+  import_playbook: k8s_dependencies.yaml
+- name: Install k8s on master
+  import_playbook: master.yaml
+- name: Install k8s on workers
+  import_playbook: workers.yaml
+- name: Fetch k8s config
+  import_playbook: fetch_config.yaml

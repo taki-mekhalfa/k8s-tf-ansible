@@ -1,0 +1,63 @@
+- name: Init k8s master
+  hosts: masters
+  become: true
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+  tasks:
+    - name: Creare kubeadm config
+      vars:
+        master_ip: "{{ hostvars['master']['ansible_host'] }}"
+      ansible.builtin.copy:
+        dest: /etc/kubernetes/kubeadm.conf
+        mode: '0644'
+        content: |
+          apiVersion: kubeadm.k8s.io/v1beta3
+          kind: ClusterConfiguration
+          networking:
+            podSubnet: 10.244.0.0/16
+          apiServer:
+            certSANs:
+              - {{ master_ip }}
+          ---
+          apiVersion: kubeadm.k8s.io/v1beta3
+          kind: KubeletConfiguration
+          cgroupDriver: systemd
+    - name: Check if kubernetes cluster is already initialized
+      ansible.builtin.stat:
+        path: /etc/kubernetes/admin.conf
+      register: k8s_initialized
+    - name: Initialize the cluster
+      ansible.builtin.command:
+        cmd: kubeadm init --config /etc/kubernetes/kubeadm.conf
+      register: kubeadm_init_result
+      changed_when: false
+      when: not k8s_initialized.stat.exists
+    - name: Display the kubeadm init result
+      ansible.builtin.debug:
+        var: kubeadm_init_result.stdout_lines
+    - name: Install pod network (Calico)
+      ansible.builtin.command:
+        cmd: kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/tigera-operator.yaml
+      register: calico_create_result
+      changed_when: false
+    - name: Display the calico create result
+      ansible.builtin.debug:
+        var: calico_create_result
+    - name: Download Calico custom-resources.yaml
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/custom-resources.yaml
+        dest: /tmp/custom-resources.yaml
+        mode: '0644'
+    - name: Update CIDR in the YAML file
+      ansible.builtin.replace:
+        path: /tmp/custom-resources.yaml
+        regexp: 'cidr: 192.168.0.0/16'
+        replace: 'cidr: 10.244.0.0/16'
+    - name: Apply Calico custom-resources.yaml
+      ansible.builtin.command:
+        cmd: kubectl apply -f /tmp/custom-resources.yaml
+      register: calico_apply_result
+      changed_when: false
+    - name: Display the calico apply result
+      ansible.builtin.debug:
+        var: calico_apply_result
